@@ -1,0 +1,130 @@
+import { describe, expect, it } from "vitest";
+import { type AgentTemplate, parseAgentTemplate } from "./agent-template.js";
+
+const template = {
+  id: "assistant",
+  name: "Helpful Assistant",
+  systemPrompt: "You are a helpful assistant.",
+  model: {
+    providerId: "openai",
+    modelId: "example-model",
+  },
+} satisfies AgentTemplate;
+
+function parse(input: unknown) {
+  const result = parseAgentTemplate(input);
+
+  if (!result.ok) {
+    throw new Error(`${result.path}: ${result.message}`);
+  }
+
+  return result.template;
+}
+
+function expectInvalidAt(input: unknown, path: string) {
+  expect(parseAgentTemplate(input)).toMatchObject({ ok: false, path: path });
+}
+
+// A missing property is reported at its parent object, naming the property.
+function expectMissing(input: unknown, parentPath: string, property: string) {
+  expect(parseAgentTemplate(input)).toMatchObject({
+    ok: false,
+    path: parentPath,
+    message: expect.stringContaining(property),
+  });
+}
+
+describe("parseAgentTemplate", () => {
+  it("accepts a complete template", () => {
+    expect(parse(template)).toEqual(template);
+  });
+
+  it("preserves internal spaces, indentation, and line breaks", () => {
+    const systemPrompt = "First  line\n\n  Indented line\n\tTabbed line";
+
+    expect(
+      parse({ ...template, systemPrompt: systemPrompt }).systemPrompt,
+    ).toBe(systemPrompt);
+  });
+
+  describe.each([
+    "id",
+    "name",
+    "systemPrompt",
+    "providerId",
+    "modelId",
+  ] as const)("%s", (field) => {
+    const isModelField = field === "providerId" || field === "modelId";
+    const path = isModelField ? `/model/${field}` : `/${field}`;
+    const withValue = (value: unknown) =>
+      isModelField
+        ? { ...template, model: { ...template.model, [field]: value } }
+        : { ...template, [field]: value };
+
+    it("trims leading and trailing whitespace", () => {
+      const input = withValue(" \n\tvalue \t\n ");
+      const parsed = parse(input);
+
+      expect(isModelField ? parsed.model[field] : parsed[field]).toBe("value");
+      expect(input).toEqual(withValue(" \n\tvalue \t\n "));
+    });
+
+    it.each([undefined, null, 42, false, [], {}])(
+      "rejects a non-string value: %j",
+      (value) => {
+        expectInvalidAt(withValue(value), path);
+      },
+    );
+
+    it.each(["", "   ", "\n\t\r", "\u00a0\u3000"])(
+      "rejects an empty or whitespace-only string: %j",
+      (value) => {
+        expectInvalidAt(withValue(value), path);
+      },
+    );
+  });
+
+  it.each(["id", "name", "systemPrompt", "model"] as const)(
+    "rejects a missing %s field",
+    (field) => {
+      const input: Record<string, unknown> = structuredClone(template);
+      delete input[field];
+
+      expectMissing(input, "", field);
+    },
+  );
+
+  it.each(["providerId", "modelId"] as const)(
+    "rejects a missing model.%s field",
+    (field) => {
+      const model: Record<string, unknown> = { ...template.model };
+      delete model[field];
+
+      expectMissing({ ...template, model: model }, "/model", field);
+    },
+  );
+
+  it.each([undefined, null, [], "template", 42, false])(
+    "rejects a non-object template: %j",
+    (input) => {
+      expectInvalidAt(input, "");
+    },
+  );
+
+  it.each([null, [], "openai", 42, false])(
+    "rejects a non-object model reference: %j",
+    (model) => {
+      expectInvalidAt({ ...template, model: model }, "/model");
+    },
+  );
+
+  it("drops unknown fields", () => {
+    const input = {
+      ...template,
+      tools: [],
+      model: { ...template.model, apiKey: "extra" },
+    };
+
+    expect(parse(input)).toEqual(template);
+  });
+});
