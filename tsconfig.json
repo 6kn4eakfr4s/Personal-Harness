@@ -8,6 +8,7 @@
     "outDir": "dist",
     "types": ["node"],
     "strict": true,
+    "skipLibCheck": true,
     "verbatimModuleSyntax": true,
     "noEmitOnError": true,
     "sourceMap": true
