@@ -4,9 +4,23 @@ import { Value } from "typebox/value";
 // A string with at least one non-whitespace character.
 const nonBlankString = Type.String({ pattern: "\\S" });
 
-// A tool name with optional surrounding whitespace, which parsing trims:
-// a lowercase letter, then up to 63 lowercase letters, digits or underscores.
-const toolName = Type.String({ pattern: "^\\s*[a-z][a-z0-9_]{0,63}\\s*$" });
+// The tool naming rule: a lowercase letter, then up to 63 lowercase letters,
+// digits or underscores.
+const toolNameRule = "[a-z][a-z0-9_]{0,63}";
+const toolNamePattern = new RegExp(`^${toolNameRule}$`);
+
+// A tool name in a template file. Surrounding whitespace is allowed because
+// parsing trims it.
+const toolName = Type.String({ pattern: `^\\s*${toolNameRule}\\s*$` });
+
+/**
+ * Whether `name` follows the tool naming rule. Stricter than the template
+ * schema: surrounding whitespace is rejected, since names in code are never
+ * trimmed.
+ */
+export function isToolName(name: string): boolean {
+  return toolNamePattern.test(name);
+}
 
 /** The shape of an agent template as written in a template file. */
 export const agentTemplateSchema = Type.Object({

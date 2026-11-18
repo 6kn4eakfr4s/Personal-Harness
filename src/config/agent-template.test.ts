@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { type AgentTemplate, parseAgentTemplate } from "./agent-template.js";
+import {
+  type AgentTemplate,
+  isToolName,
+  parseAgentTemplate,
+} from "./agent-template.js";
 
 const template = {
   id: "assistant",
@@ -197,4 +201,33 @@ describe("parseAgentTemplate", () => {
       });
     });
   });
+});
+
+describe("isToolName", () => {
+  it.each(["a", "echo", "read_file2", `a${"b".repeat(63)}`])(
+    "accepts %j",
+    (name) => {
+      expect(isToolName(name)).toBe(true);
+    },
+  );
+
+  it.each([
+    "",
+    "Echo",
+    "1echo",
+    "_echo",
+    "echo-tool",
+    "echo tool",
+    `a${"b".repeat(64)}`,
+  ])("rejects %j", (name) => {
+    expect(isToolName(name)).toBe(false);
+  });
+
+  // The template schema accepts these because parsing trims them.
+  it.each([" echo", "echo ", "echo\n", "\techo\t"])(
+    "rejects surrounding whitespace: %j",
+    (name) => {
+      expect(isToolName(name)).toBe(false);
+    },
+  );
 });
