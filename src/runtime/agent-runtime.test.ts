@@ -17,6 +17,7 @@ const template = {
   name: "Helpful Assistant",
   systemPrompt: "You are a helpful assistant.",
   model: { providerId: "faux", modelId: "faux-1" },
+  tools: [],
 } satisfies AgentTemplate;
 
 let faux: FauxProviderHandle;

@@ -16,6 +16,7 @@ const template = {
     providerId: "openai",
     modelId: "example-model",
   },
+  tools: [],
 } satisfies AgentTemplate;
 
 let baseDir: string;
@@ -56,6 +57,15 @@ describe("loadAgentTemplates", () => {
       await expect(loadAgentTemplates(options)).resolves.toEqual([
         second,
         first,
+      ]);
+    });
+
+    it("loads a template file without tools as having no tools", async () => {
+      const { tools: _, ...withoutTools } = template;
+      await writeTemplate("assistant.json", withoutTools);
+
+      await expect(loadAgentTemplates(options)).resolves.toEqual([
+        { ...withoutTools, tools: [] },
       ]);
     });
   });

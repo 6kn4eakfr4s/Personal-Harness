@@ -9,6 +9,7 @@ const template = {
     providerId: "openai",
     modelId: "example-model",
   },
+  tools: ["echo", "web_search"],
 } satisfies AgentTemplate;
 
 function parse(input: unknown) {
@@ -121,10 +122,79 @@ describe("parseAgentTemplate", () => {
   it("drops unknown fields", () => {
     const input = {
       ...template,
-      tools: [],
+      temperature: 0.5,
       model: { ...template.model, apiKey: "extra" },
     };
 
     expect(parse(input)).toEqual(template);
+  });
+
+  describe("tools", () => {
+    const withTools = (tools: unknown) => ({ ...template, tools: tools });
+
+    it("gives no tools when the field is omitted", () => {
+      const { tools: _, ...input } = template;
+
+      expect(parse(input).tools).toEqual([]);
+    });
+
+    it("accepts an empty list", () => {
+      expect(parse(withTools([])).tools).toEqual([]);
+    });
+
+    it("keeps the listed order", () => {
+      expect(parse(withTools(["web_search", "echo"])).tools).toEqual([
+        "web_search",
+        "echo",
+      ]);
+    });
+
+    it("trims surrounding whitespace without modifying the input", () => {
+      const input = withTools([" echo", "web_search \n"]);
+      const parsed = parse(input);
+
+      expect(parsed.tools).toEqual(["echo", "web_search"]);
+      expect(input).toEqual(withTools([" echo", "web_search \n"]));
+    });
+
+    it.each(["a", "read_file2", `a${"b".repeat(63)}`])(
+      "accepts the name %j",
+      (name) => {
+        expect(parse(withTools([name])).tools).toEqual([name]);
+      },
+    );
+
+    it.each([null, "echo", 42, false, {}])(
+      "rejects a non-array value: %j",
+      (tools) => {
+        expectInvalidAt(withTools(tools), "/tools");
+      },
+    );
+
+    it.each([
+      null,
+      42,
+      ["echo"],
+      "",
+      "   ",
+      "Echo",
+      "1echo",
+      "_echo",
+      "echo-tool",
+      "echo tool",
+      `a${"b".repeat(64)}`,
+    ])("rejects an invalid entry: %j", (entry) => {
+      expectInvalidAt(withTools(["echo", entry]), "/tools/1");
+    });
+
+    it("rejects a name repeated after trimming", () => {
+      expect(
+        parseAgentTemplate(withTools(["echo", "web_search", " echo "])),
+      ).toEqual({
+        ok: false,
+        path: "/tools/2",
+        message: 'must not repeat tool "echo"',
+      });
+    });
   });
 });
