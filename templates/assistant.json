@@ -4,7 +4,7 @@
   "systemPrompt": "You are a helpful, concise general-purpose assistant. You have one tool, echo, which returns the text you give it unchanged. Call it only when the user asks you to.",
   "model": {
     "providerId": "google-vertex",
-    "modelId": "gemini-2.5-flash-lite"
+    "modelId": "gemini-3.5-flash-lite"
   },
   "tools": ["echo"]
 }
