@@ -15,13 +15,13 @@ npm test
 npm run build
 ```
 
-The repository is an npm workspace. The backend package lives in `backend/`:
-its TypeScript source is in `backend/src/` and compiles to `backend/dist/`.
-Root scripts run across all workspaces. Biome handles linting and formatting;
-use `npm run format` to format code.
+The repository is an npm workspace with three packages:
 
-Tests use Vitest, with `*.test.ts` files alongside source files.
-`npm run test:watch -w @personal-harness/backend` enables watch mode.
+| Directory | Package | Contents |
+|---|---|---|
+| `protocol/` | `@personal-harness/protocol` | Types shared by the backend and the web client. |
+| `backend/` | `@personal-harness/backend` | The agent service and a CLI for manual testing. |
+| `web/` | `@personal-harness/web` | The web client. |
 
 ## Continuous integration
 
